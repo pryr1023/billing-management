@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Manage Bills</title>
+    <link rel="stylesheet" href="/static/css/styles.css">
+</head>
+<body>
+    <h1>Manage Bills</h1>
+
+    <form action="/bills" method="POST">
+        <input type="text" name="name" placeholder="Bill Name" required>
+        <input type="number" step="0.01" name="amount" placeholder="Amount" required>
+        <input type="date" name="due_date" required>
+        <label for="recurring">Recurring?</label>
+        <input type="checkbox" name="recurring">
+        <button type="submit">Add Bill</button>
+    </form>
+
+    <h2>Current Bills</h2>
+    <ul>
+        {% for bill in bills %}
+        <li>{{ bill.name }} - ${{ bill.amount }} - Due: {{ bill.due_date }}</li>
+        {% endfor %}
+    </ul>
+
+    <a href="/">Back to Dashboard</a>
+</body>
+</html>

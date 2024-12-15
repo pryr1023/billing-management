@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Billing Management</title>
+    <link rel="stylesheet" href="/static/css/styles.css">
+</head>
+<body>
+    <h1>Billing Dashboard</h1>
+    <h2>Upcoming Bills</h2>
+    <ul>
+        {% for bill in bills %}
+        <li>{{ bill.name }} - ${{ bill.amount }} - Due: {{ bill.due_date }}</li>
+        {% endfor %}
+    </ul>
+
+    <h2>Debt Summary</h2>
+    <p>Total Debt: ${{ debt_summary.total_balance }}</p>
+    <p>Total Interest: ${{ debt_summary.total_interest }}</p>
+
+    <a href="/bills">Manage Bills</a>
+</body>
+</html>
