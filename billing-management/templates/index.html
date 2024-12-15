@@ -3,22 +3,159 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Billing Management</title>
-    <link rel="stylesheet" href="/static/css/styles.css">
+    <title>Billing Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
 </head>
 <body>
-    <h1>Billing Dashboard</h1>
-    <h2>Upcoming Bills</h2>
-    <ul>
-        {% for bill in bills %}
-        <li>{{ bill.name }} - ${{ bill.amount }} - Due: {{ bill.due_date }}</li>
-        {% endfor %}
-    </ul>
+    <div class="container mt-5">
+        <h1 class="text-center mb-4">Billing Dashboard</h1>
 
-    <h2>Debt Summary</h2>
-    <p>Total Debt: ${{ debt_summary.total_balance }}</p>
-    <p>Total Interest: ${{ debt_summary.total_interest }}</p>
+        <!-- Row for Upcoming Bills, Credit Cards, and Debt Summary -->
+        <div class="row">
+            <!-- Bills Section -->
+            <div class="col-md-4">
+                <div class="card shadow-sm mb-4">
+                    <div class="card-header bg-primary text-white">
+                        <h5 class="mb-0">Upcoming Bills</h5>
+                    </div>
+                    <ul class="list-group list-group-flush">
+                        {% for bill in bills %}
+                        <li class="list-group-item d-flex justify-content-between align-items-center {% if bill.exclude_from_projections %}text-muted{% endif %}">
+                            <div class="text-truncate" style="max-width: 60%;">
+                                {% if bill.exclude_from_projections %}⏸️ {% endif %}
+                                <strong>{{ bill.name }}</strong>
+                            </div>
+                            <div class="text-end">
+                                <span>${{ bill.amount }}</span><br>
+                                <small class="text-muted">(Due: {{ bill.due_date }})</small>
+                            </div>
+                        </li>
+                        {% else %}
+                        <li class="list-group-item text-muted">No upcoming bills.</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            </div>
 
-    <a href="/bills">Manage Bills</a>
+            <!-- Credit Cards Section -->
+            <div class="col-md-4">
+                <div class="card shadow-sm mb-4">
+                    <div class="card-header bg-info text-white">
+                        <h5 class="mb-0">Credit Cards</h5>
+                    </div>
+                    <ul class="list-group list-group-flush">
+                        {% for card in debt_summary.credit_cards %}
+                        <li class="list-group-item d-flex justify-content-between align-items-center {% if card.exclude_from_projections %}text-muted{% endif %}">
+                            <div class="text-truncate" style="max-width: 60%;">
+                                {% if card.exclude_from_projections %}⏸️ {% endif %}
+                                <strong>{{ card.name }}</strong>
+                            </div>
+                            <div class="text-end">
+                                <span>${{ card.balance }}</span><br>
+                                <small class="text-muted">(Due: {{ card.due_date }})</small>
+                            </div>
+                        </li>
+                        {% else %}
+                        <li class="list-group-item text-muted">No credit cards added.</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Debt Summary -->
+            <div class="col-md-4">
+                <div class="card shadow-sm mb-4">
+                    <div class="card-header bg-success text-white">
+                        <h5 class="mb-0">Debt Summary</h5>
+                    </div>
+                    <div class="card-body">
+                        <p><strong>Total Debt:</strong> ${{ debt_summary.total_balance }}</p>
+                        <p><strong>Total Interest:</strong> ${{ debt_summary.total_interest }}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="d-flex justify-content-center gap-3 mt-4">
+            <a href="/bills" class="btn btn-primary px-4 py-2">Manage Bills</a>
+            <a href="/credit-cards" class="btn btn-info px-4 py-2">Manage Credit Cards</a>
+        </div>
+    </div>
+
+    <!-- Chart Placeholder -->
+    <div class="container mt-5">
+        <div class="card shadow-sm">
+            <div class="card-header bg-secondary text-white">
+                <h5 class="mb-0">Payment Projections</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="paymentChart" width="400" height="200"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Testing Mode Toggle -->
+    <div class="text-center my-3">
+        <a href="{{ url_for('toggle_testing_mode') }}" class="btn btn-secondary">
+            {% if testing_mode %}
+                Disable Testing Mode
+            {% else %}
+                Enable Testing Mode
+            {% endif %}
+        </a>
+    </div>
+    
+    {% if testing_mode %}
+    <div class="text-center my-3">
+        <a href="{{ url_for('generate_test_data') }}" class="btn btn-danger">
+            Generate Test Data
+        </a>
+    </div>
+    {% endif %}
+
+
+    <!-- Chart.js Script -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            fetch('/api/payment-projections')
+                .then(response => response.json())
+                .then(data => {
+                    const ctx = document.getElementById('paymentChart').getContext('2d');
+                    new Chart(ctx, {
+                        type: 'line', // Line chart for projections
+                        data: {
+                            labels: data.labels, // X-axis labels (months)
+                            datasets: [{
+                                label: 'Projected Payments',
+                                data: data.data, // Y-axis values (totals)
+                                borderColor: 'rgba(75, 192, 192, 1)',
+                                backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                                borderWidth: 2,
+                                tension: 0.4
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            plugins: {
+                                legend: {
+                                    display: true,
+                                    position: 'top',
+                                }
+                            },
+                            scales: {
+                                y: {
+                                    beginAtZero: true
+                                }
+                            }
+                        }
+                    });
+                });
+        });
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </body>
 </html>
