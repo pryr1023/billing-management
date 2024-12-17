@@ -24,19 +24,24 @@ def get_debt_summary():
         'credit_cards': credit_cards
     }
 
+from backend.database import db, CreditCard
+
 def add_credit_card(card_data):
     """Add a new credit card to the database."""
     new_card = CreditCard(
         name=card_data['name'],
         balance=card_data['balance'],
-        interest_rate=card_data['interest_rate']
+        interest_rate=card_data['interest_rate'],
+        due_date=card_data.get('due_date')
     )
     db.session.add(new_card)
     db.session.commit()
 
-def get_all_credit_cards(sort_by="balance"):
-    """Retrieve all credit cards sorted by a specific column."""
-    if sort_by == "interest_rate":
-        return CreditCard.query.order_by(CreditCard.interest_rate).all()
-    else:
-        return CreditCard.query.order_by(CreditCard.balance).all()
+def update_credit_card(card_id, card_data):
+    """Update an existing credit card in the database."""
+    card = CreditCard.query.get_or_404(card_id)
+    card.name = card_data.get('name', card.name)
+    card.balance = card_data.get('balance', card.balance)
+    card.interest_rate = card_data.get('interest_rate', card.interest_rate)
+    card.due_date = card_data.get('due_date', card.due_date)
+    db.session.commit()

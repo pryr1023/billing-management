@@ -1,8 +1,9 @@
 from flask import Flask, jsonify, render_template, request, redirect, url_for, flash
 from flask_migrate import Migrate
-from backend.database import db, initialize_database
+from backend.database import CreditCard, db, initialize_database
 from backend.scheduler import add_bill, get_all_bills, generate_test_bills
-from backend.debt_manager import get_debt_summary, add_credit_card, get_all_credit_cards
+from backend.debt_manager import get_debt_summary, add_credit_card
+from datetime import datetime
 
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///billing_management.db'
@@ -99,17 +100,36 @@ def manage_credit_cards():
     return render_template('credit_cards.html', credit_cards=credit_cards, sort_by=sort_by)
 
 @app.route('/add-credit-card', methods=['POST'])
-def add_credit_card():
+def add_new_credit_card():  # Renamed to avoid conflict with debt_manager function
     """Route to add a new credit card"""
+    from backend.debt_manager import add_credit_card  # Explicit import to avoid shadowing
     card_data = {
         'name': request.form['name'],
         'balance': float(request.form['balance']),
         'interest_rate': float(request.form['interest_rate']),
-        'due_date': request.form['due_date']
+        'due_date': datetime.strptime(request.form['due_date'], '%Y-%m-%d').date()  # Convert to date
     }
     add_credit_card(card_data)
     flash(f'Credit Card "{card_data["name"]}" added successfully!', 'success')
     return redirect(url_for('manage_credit_cards'))
+
+@app.route('/edit-credit-card/<int:card_id>', methods=['GET', 'POST'])
+def edit_credit_card(card_id):
+    """Route to edit an existing credit card."""
+    from backend.debt_manager import update_credit_card  # Import the new shared function
+    if request.method == 'POST':
+        card_data = {
+            'name': request.form['name'],
+            'balance': float(request.form['balance']),
+            'interest_rate': float(request.form['interest_rate']),
+            'due_date': datetime.strptime(request.form['due_date'], '%Y-%m-%d').date()  # Convert to date
+        }
+        update_credit_card(card_id, card_data)
+        flash(f'Credit Card "{card_data["name"]}" updated successfully!', 'success')
+        return redirect(url_for('manage_credit_cards'))
+    
+    card = CreditCard.query.get_or_404(card_id)
+    return render_template('edit_credit_card.html', card=card)
 
 @app.route('/delete-bill/<int:bill_id>', methods=['POST'])
 def delete_bill(bill_id):
@@ -145,22 +165,6 @@ def edit_bill(bill_id):
         return redirect(url_for('manage_bills'))
     
     return render_template('edit_bill.html', bill=bill)
-
-@app.route('/edit-credit-card/<int:card_id>', methods=['GET', 'POST'])
-def edit_credit_card(card_id):
-    from backend.database import CreditCard
-    card = CreditCard.query.get_or_404(card_id)
-    
-    if request.method == 'POST':
-        card.name = request.form['name']
-        card.balance = float(request.form['balance'])
-        card.interest_rate = float(request.form['interest_rate'])
-        card.due_date = request.form['due_date']
-        db.session.commit()
-        flash(f'Credit Card "{card.name}" updated successfully!', 'success')
-        return redirect(url_for('manage_credit_cards'))
-    
-    return render_template('edit_credit_card.html', card=card)
 
 @app.route('/toggle-bill-exclusion/<int:bill_id>', methods=['POST'])
 def toggle_bill_exclusion(bill_id):
